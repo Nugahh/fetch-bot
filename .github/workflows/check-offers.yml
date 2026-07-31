@@ -1,0 +1,60 @@
+name: Check housing offers
+
+on:
+  schedule:
+    # Every 30 minutes. GitHub may delay scheduled runs under load.
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+# Needed so the job can commit the updated state file back to the repo.
+permissions:
+  contents: write
+
+concurrency:
+  group: check-offers
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run offer check
+        run: npm start
+        env:
+          # ── Secrets (Settings → Secrets and variables → Actions → Secrets) ──
+          ALIN_LOGIN: ${{ secrets.ALIN_LOGIN }}
+          ALIN_PASSWORD: ${{ secrets.ALIN_PASSWORD }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          # ── Variables (… → Variables) — non-sensitive search filters ──
+          SMTP_HOST: ${{ vars.SMTP_HOST || 'smtp.gmail.com' }}
+          SMTP_PORT: ${{ vars.SMTP_PORT || '465' }}
+          ALIN_POSTAL_CODES: ${{ vars.ALIN_POSTAL_CODES }}
+          ALIN_DEPARTMENTS: ${{ vars.ALIN_DEPARTMENTS }}
+          ALIN_MIN_RENT: ${{ vars.ALIN_MIN_RENT }}
+          ALIN_MAX_RENT: ${{ vars.ALIN_MAX_RENT }}
+          ALIN_KIND: ${{ vars.ALIN_KIND }}
+          STATE_FILE: data/seen-offers.json
+
+      - name: Persist state
+        run: |
+          if [[ -n "$(git status --porcelain data/seen-offers.json)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add data/seen-offers.json
+            git commit -m "chore: update seen offers state [skip ci]"
+            git push
+          else
+            echo "No state change to commit."
+          fi
