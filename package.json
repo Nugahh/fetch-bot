@@ -9,15 +9,18 @@
   "scripts": {
     "start": "tsx src/main.ts",
     "preview": "tsx src/tools/preview-offers.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:lambda": "node scripts/build-lambda.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.632.0",
     "dotenv": "^16.4.5",
     "nodemailer": "^6.9.14"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
     "@types/nodemailer": "^6.4.15",
+    "esbuild": "^0.23.0",
     "tsx": "^4.16.0",
     "typescript": "^5.5.0"
   }

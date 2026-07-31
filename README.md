@@ -69,9 +69,39 @@ Voir [.env.example](.env.example). Les principales :
 2. **Settings → Secrets and variables → Actions → Secrets**, ajoutez :
    `ALIN_LOGIN`, `ALIN_PASSWORD`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `MAIL_TO`.
 3. Onglet **Variables** (non sensibles), optionnel : `ALIN_POSTAL_CODES`, `ALIN_DEPARTMENTS`, `ALIN_MIN_RENT`, `ALIN_MAX_RENT`, `ALIN_KIND`, `SMTP_HOST`, `SMTP_PORT`.
-4. Le workflow [.github/workflows/check-offers.yml](.github/workflows/check-offers.yml) tourne **toutes les 30 min** et peut être lancé à la main (bouton *Run workflow*).
+4. Le workflow [.github/workflows/check-offers.yml](.github/workflows/check-offers.yml) tourne **toutes les 15 min** et peut être lancé à la main (bouton *Run workflow*).
 
 L'état des offres déjà notifiées est **commité automatiquement** dans `data/seen-offers.json` entre les exécutions — c'est ce qui évite les doublons.
+
+## Déploiement alternatif : AWS (EventBridge + Lambda + S3)
+
+Même bot, autre hébergement. Grâce à l'archi hexagonale, **seuls le point d'entrée et le stockage d'état changent** :
+
+| GitHub Actions | AWS |
+|---|---|
+| `src/main.ts` | `src/lambda.ts` (handler Lambda) |
+| `FileSeenOffersStore` (fichier + commit git) | `S3SeenOffersStore` (objet dans un bucket S3) |
+| cron dans le `.yml` | schedule **EventBridge** → Lambda |
+| Secrets GitHub | variables d'env de la Lambda |
+
+Le domaine, le cas d'usage, l'adapter al-in.fr et l'email sont **identiques** (aucune ligne changée).
+
+L'infra est décrite dans [template.yaml](template.yaml) (AWS **SAM**). Déploiement :
+
+```bash
+# Prérequis : AWS CLI configuré (aws configure) + AWS SAM CLI installé.
+npm ci
+npm run build:lambda          # bundle dist/lambda.js (CommonJS) via esbuild
+sam deploy --guided           # 1re fois : renseigne les paramètres (identifiants, emails, schedule)
+```
+
+`--guided` te demande chaque paramètre (les mots de passe sont masqués, non enregistrés dans `samconfig.toml`). Les fois suivantes : `npm run build:lambda && sam deploy`.
+
+Pour changer la fréquence, passe un paramètre au déploiement, ex. `Schedule=rate(30 minutes)` ou `Schedule=cron(0/15 * * * ? *)`.
+
+Le bucket S3 et le rôle IAM (droit lecture/écriture sur ce seul bucket) sont créés automatiquement par le template. La mémoire anti-doublon vit dans l'objet `seen-offers.json` du bucket.
+
+> **Renforcer la sécurité (optionnel) :** ici les identifiants sont des variables d'env de la Lambda (visibles dans la console AWS). Pour du chiffrement géré, on peut les basculer vers **AWS Secrets Manager** et les lire au démarrage — un autre adapter de config, sans toucher au reste.
 
 ## ⚠️ Calibration du mapping (à faire au 1er run)
 

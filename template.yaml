@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  fetch-bot — al-in.fr housing offer watcher.
+  EventBridge (schedule) -> Lambda (runs the bot) -> S3 (dedup state).
+
+Parameters:
+  AlinLogin:
+    Type: String
+    NoEcho: true
+    Description: al-in.fr login (email)
+  AlinPassword:
+    Type: String
+    NoEcho: true
+    Description: al-in.fr password
+  SmtpUser:
+    Type: String
+    NoEcho: true
+    Description: Gmail address used to send the email
+  SmtpPass:
+    Type: String
+    NoEcho: true
+    Description: Gmail App Password (16 chars, no spaces)
+  MailFrom:
+    Type: String
+    Description: 'From header, e.g. AL''in Bot <you@gmail.com>'
+  MailTo:
+    Type: String
+    Description: Recipient address
+  SmtpHost:
+    Type: String
+    Default: smtp.gmail.com
+  SmtpPort:
+    Type: String
+    Default: "465"
+  Schedule:
+    Type: String
+    Default: rate(15 minutes)
+    Description: EventBridge schedule expression (rate(...) or cron(...))
+
+Resources:
+  # ── Persistent dedup state (replaces the git-committed file) ──────────
+  StateBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  # ── The bot itself ────────────────────────────────────────────────────
+  CheckOffersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      # Run `npm run build:lambda` first — it produces dist/lambda.js (CJS).
+      CodeUri: dist/
+      Handler: lambda.handler
+      Runtime: nodejs20.x
+      Architectures:
+        - arm64
+      MemorySize: 256
+      Timeout: 60
+      Environment:
+        Variables:
+          ALIN_LOGIN: !Ref AlinLogin
+          ALIN_PASSWORD: !Ref AlinPassword
+          SMTP_USER: !Ref SmtpUser
+          SMTP_PASS: !Ref SmtpPass
+          MAIL_FROM: !Ref MailFrom
+          MAIL_TO: !Ref MailTo
+          SMTP_HOST: !Ref SmtpHost
+          SMTP_PORT: !Ref SmtpPort
+          STATE_BUCKET: !Ref StateBucket
+          STATE_KEY: seen-offers.json
+      Policies:
+        # Least-privilege read/write on just this bucket.
+        - S3CrudPolicy:
+            BucketName: !Ref StateBucket
+      Events:
+        ScheduledCheck:
+          # `Type: Schedule` provisions an EventBridge rule targeting the Lambda.
+          Type: Schedule
+          Properties:
+            Schedule: !Ref Schedule
+            Description: Periodic al-in.fr offer check
+            Enabled: true
+
+Outputs:
+  FunctionName:
+    Description: Lambda function name
+    Value: !Ref CheckOffersFunction
+  StateBucketName:
+    Description: S3 bucket holding the dedup state
+    Value: !Ref StateBucket
