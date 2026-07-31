@@ -2,8 +2,8 @@ name: Check housing offers
 
 on:
   schedule:
-    # Every 30 minutes. GitHub may delay scheduled runs under load.
-    - cron: "*/30 * * * *"
+    # Every 15 minutes. GitHub may delay scheduled runs under load.
+    - cron: "*/15 * * * *"
   workflow_dispatch: {} # allow manual runs from the Actions tab
 
 # Needed so the job can commit the updated state file back to the repo.
