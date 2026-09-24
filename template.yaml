@@ -60,7 +60,7 @@ Resources:
       # Run `npm run build:lambda` first — it produces dist/lambda.js (CJS).
       CodeUri: dist/
       Handler: lambda.handler
-      Runtime: nodejs20.x
+      Runtime: nodejs24.x
       Architectures:
         - arm64
       MemorySize: 256
