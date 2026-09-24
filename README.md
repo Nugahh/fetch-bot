@@ -89,15 +89,20 @@ Le domaine, le cas d'usage, l'adapter al-in.fr et l'email sont **identiques** (a
 L'infra est décrite dans [template.yaml](template.yaml) (AWS **SAM**). Déploiement :
 
 ```bash
-# Prérequis : AWS CLI configuré (aws configure) + AWS SAM CLI installé.
+# Prérequis : AWS CLI configuré (aws configure, région eu-west-3) + AWS SAM CLI installé.
 npm ci
-npm run build:lambda          # bundle dist/lambda.js (CommonJS) via esbuild
-sam deploy --guided           # 1re fois : renseigne les paramètres (identifiants, emails, schedule)
+npm run deploy -- <nom-de-la-stack>
 ```
 
-`--guided` te demande chaque paramètre (les mots de passe sont masqués, non enregistrés dans `samconfig.toml`). Les fois suivantes : `npm run build:lambda && sam deploy`.
+`npm run deploy` build `dist/lambda.js` (CommonJS, via esbuild) puis lance `sam deploy` en lisant **tous les paramètres depuis ton `.env`** (mêmes noms de variables que pour le lancement local, filtres de recherche inclus). Il te montre le changeset CloudFormation et te demande confirmation avant d'appliquer. Le nom de stack peut aussi venir de `STACK_NAME` dans le `.env`, et la région de `AWS_REGION` (défaut `eu-west-3`).
 
-Pour changer la fréquence, passe un paramètre au déploiement, ex. `Schedule=rate(30 minutes)` ou `Schedule=cron(0/15 * * * ? *)`.
+> **Mise à jour d'une stack existante :** utilise exactement le même nom de stack, sinon SAM en crée une deuxième (2 Lambdas, 2 buckets, mails en double).
+
+Pour changer la fréquence, ajoute `SCHEDULE=rate(30 minutes)` (ou `cron(0/15 * * * ? *)`) dans le `.env` ; défaut `rate(15 minutes)`.
+
+**Alerte en cas d'erreur :** le déploiement crée une alarme CloudWatch + un topic SNS qui t'envoie un mail (à `ALERT_EMAIL`, sinon `MAIL_TO`) quand la Lambda plante (SMTP refusé, login al-in cassé, timeout…). L'alerte part d'AWS, pas de Gmail : elle arrive même si c'est l'envoi Gmail qui est en panne. Au premier déploiement, clique sur le lien de confirmation du mail « AWS Notification - Subscription Confirmation ». L'alarme notifie au **changement d'état** (panne, puis retour à la normale), pas toutes les 15 min.
+
+Alternative sans script : `sam deploy --guided` (te demande chaque paramètre ; les mots de passe ne sont pas enregistrés dans `samconfig.toml`).
 
 Le bucket S3 et le rôle IAM (droit lecture/écriture sur ce seul bucket) sont créés automatiquement par le template. La mémoire anti-doublon vit dans l'objet `seen-offers.json` du bucket.
 

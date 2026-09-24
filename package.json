@@ -10,7 +10,8 @@
     "start": "tsx src/main.ts",
     "preview": "tsx src/tools/preview-offers.ts",
     "typecheck": "tsc --noEmit",
-    "build:lambda": "node scripts/build-lambda.mjs"
+    "build:lambda": "node scripts/build-lambda.mjs",
+    "deploy": "npm run build:lambda && node scripts/deploy.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.632.0",
