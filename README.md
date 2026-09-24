@@ -102,6 +102,8 @@ Pour changer la fréquence, ajoute `SCHEDULE=rate(30 minutes)` (ou `cron(0/15 * 
 
 **Alerte en cas d'erreur :** le déploiement crée une alarme CloudWatch + un topic SNS qui t'envoie un mail (à `ALERT_EMAIL`, sinon `MAIL_TO`) quand la Lambda plante (SMTP refusé, login al-in cassé, timeout…). L'alerte part d'AWS, pas de Gmail : elle arrive même si c'est l'envoi Gmail qui est en panne. Au premier déploiement, clique sur le lien de confirmation du mail « AWS Notification - Subscription Confirmation ». L'alarme notifie au **changement d'état** (panne, puis retour à la normale), pas toutes les 15 min.
 
+**Mail d'erreur envoyé par le bot lui-même :** si une exécution plante (al-in.fr injoignable ou identifiants refusés, erreur S3…), la Lambda t'envoie un mail « ⚠️ fetch-bot a rencontré une erreur » via le même SMTP. La même erreur n'est signalée qu'une fois (rappel au bout de 6 h) : l'état est gardé dans `last-failure.json` du bucket S3, et un passage réussi le remet à zéro. Ça ne couvre pas une panne du SMTP lui-même : dans ce cas seuls les logs CloudWatch et l'alarme ci-dessus le voient. Les relances automatiques de Lambda sont désactivées (`MaximumRetryAttempts: 0`) : le passage suivant, 15 min plus tard, fait office de nouvel essai.
+
 Alternative sans script : `sam deploy --guided` (te demande chaque paramètre ; les mots de passe ne sont pas enregistrés dans `samconfig.toml`).
 
 Le bucket S3 et le rôle IAM (droit lecture/écriture sur ce seul bucket) sont créés automatiquement par le template. La mémoire anti-doublon vit dans l'objet `seen-offers.json` du bucket.

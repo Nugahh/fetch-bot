@@ -15,4 +15,12 @@ export interface Notifier {
    * @param sourceName  label of the source the offers came from
    */
   notify(offers: Offer[], sourceName: string): Promise<void>;
+
+  /**
+   * Tell the user the bot itself failed (site unreachable, bad credentials…),
+   * so an outage doesn't go unnoticed.
+   *
+   * @param message  the error message
+   */
+  notifyFailure(message: string): Promise<void>;
 }

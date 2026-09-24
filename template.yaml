@@ -121,6 +121,10 @@ Resources:
             Schedule: !Ref Schedule
             Description: Periodic al-in.fr offer check
             Enabled: true
+      # Async invocations are retried twice by default. For a 15-minute poller
+      # that only repeats the same failure; the next scheduled run is the retry.
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0
 
   # ── Failure alerting ──────────────────────────────────────────────────
   # Independent from the bot's own Gmail/SMTP path, so it still fires when

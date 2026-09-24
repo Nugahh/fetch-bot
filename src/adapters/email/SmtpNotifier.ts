@@ -46,6 +46,18 @@ export class SmtpNotifier implements Notifier {
       html: renderHtml(offers, sourceName),
     });
   }
+
+  async notifyFailure(message: string): Promise<void> {
+    await this.transporter.sendMail({
+      from: this.config.from,
+      to: this.config.to,
+      subject: "⚠️ fetch-bot a rencontré une erreur",
+      text: `Le bot n'a pas pu vérifier les offres :\n\n${message}\n\nDétails dans les logs CloudWatch de la Lambda.\n`,
+      html: `<p>Le bot n'a pas pu vérifier les offres :</p>
+<pre style="background:#f4f5f7;padding:12px;border-radius:8px;white-space:pre-wrap;">${escapeHtml(message)}</pre>
+<p style="color:#6b7280;font-size:13px;">Détails dans les logs CloudWatch de la Lambda.</p>`,
+    });
+  }
 }
 
 function renderText(offers: Offer[], sourceName: string): string {

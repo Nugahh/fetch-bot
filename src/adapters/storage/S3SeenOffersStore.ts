@@ -61,7 +61,7 @@ export class S3SeenOffersStore implements SeenOffersStore {
 }
 
 /** True when the object simply doesn't exist yet (first run). */
-function isNotFound(err: unknown): boolean {
+export function isNotFound(err: unknown): boolean {
   const name = (err as { name?: string; Code?: string })?.name;
   const code = (err as { Code?: string })?.Code;
   const status = (err as { $metadata?: { httpStatusCode?: number } })?.$metadata
